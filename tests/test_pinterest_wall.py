@@ -71,6 +71,28 @@ class PinterestTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'stalled'):
                 wall.collect(URL, client)
 
+    def test_resource_options_bookmark_continues_and_ends_short_board(self):
+        client = Mock()
+        next_page = response([pin(2)], None)
+        next_page.json.return_value['resource'] = {'options': {'bookmarks': ['next2']}}
+        last_page = response([pin(3)], None)
+        del last_page.json.return_value['resource_response']['bookmark']
+        last_page.json.return_value['resource'] = {'options': {'bookmarks': ['-end-']}}
+        client.get.side_effect = [Mock(text=page([pin(1)])), next_page, last_page]
+        _, images = wall.collect(URL, client)
+        self.assertEqual([item['id'] for item in images], ['1', '2', '3'])
+        self.assertEqual(client.get.call_count, 3)
+        self.assertEqual(json.loads(client.get.call_args.kwargs['params']['data'])['options']['bookmarks'], ['next2'])
+
+    def test_invalid_or_repeated_fallback_bookmark_still_fails(self):
+        for bookmarks in ([], ['next'], ['one', 'two'], '-end-', [None]):
+            client = Mock()
+            last_page = response([pin(2)], None)
+            last_page.json.return_value['resource'] = {'options': {'bookmarks': bookmarks}}
+            client.get.side_effect = [Mock(text=page([pin(1)])), last_page]
+            with self.subTest(bookmarks=bookmarks), self.assertRaisesRegex(ValueError, 'stalled'):
+                wall.collect(URL, client)
+
     def test_untrusted_pin_urls_are_not_downloaded(self):
         for url in ('file:///etc/passwd', 'https://localhost/a.jpg', 'https://evil.test/a.jpg',
                     'https://i.pinimg.com.evil.test/a.jpg', 'https://i.pinimg.com:8443/a.jpg'):

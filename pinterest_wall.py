@@ -105,11 +105,17 @@ def collect(url, client):
                                       "data": json.dumps({"options": options, "context": {}})},
                               headers={"X-Pinterest-PWS-Handler": "www/[username]/[slug].js"}, timeout=30)
         response.raise_for_status()
-        payload = response.json().get("resource_response", {})
+        result = response.json()
+        payload = result.get("resource_response", {})
         if payload.get("status") != "success" or not isinstance(payload.get("data"), list):
             raise ValueError("Pinterest did not return a valid board page. Try again later.")
         pins = payload["data"]
         bookmark = payload.get("bookmark")
+        # The last page may omit response.bookmark and put -end- in resource.options instead.
+        if not bookmark:
+            bookmarks = result.get("resource", {}).get("options", {}).get("bookmarks", [])
+            if isinstance(bookmarks, list) and len(bookmarks) == 1 and isinstance(bookmarks[0], str):
+                bookmark = bookmarks[0]
     else:
         raise ValueError("Pagination limit reached before collecting 100 images or reaching the board end.")
     if not images:
