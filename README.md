@@ -1,9 +1,13 @@
-# DoubanImageWall
+# DoubanImageWall · 豆瓣海报墙 & Pinterest 壁纸
 
-读取豆瓣用户标记为“看过”的电影/“听过”的音乐/“读过”的图书，生成**电影海报墙**/**音乐专辑封面墙**/**图书封面墙**。
+将豆瓣收藏或公开 Pinterest 画板中的图片生成图片墙，支持本地运行和 GitHub Actions。
 
-大小与排列方式可调。
-参考 [workflows 目录](.github/workflows/)以使用 GitHub Actions [更新图片](.github/workflows/generate-image-wall.yml) ，以及[输入任意豆瓣 ID 将运行结果存放于 workflow artifacts](.github/workflows/generate-image-wall-on-demand-for-anyone.yml)。
+| 图片来源 | 成品 | 使用入口 |
+| --- | --- | --- |
+| 豆瓣：看过的电影、听过的音乐、读过的图书 | 电影海报墙、音乐专辑封面墙、图书封面墙，大小与排列方式可调 | [豆瓣本地运行](#豆瓣本地运行) · [豆瓣 Action](.github/workflows/generate-image-wall-demo-for-anyone.yml) |
+| Pinterest：公开画板 | 最多 100 张图片的不规则拼贴，生成 4K 桌面版和手机竖屏版 | [Pinterest 使用指南](#pinterest-画板壁纸github-actions) · [Pinterest Action](https://github.com/peterchealse/DoubanImageWall/actions/workflows/generate-pinterest-wallpaper.yml) |
+
+全部工作流见 [workflows 目录](.github/workflows/)。
 
 ### 效果图
 电影海报墙：
@@ -12,7 +16,7 @@
 音乐专辑封面墙：
 ![MusicAlbumCoverWall](output/49729399_music.jpg?raw=true "MusicAlbumCoverWall")
 
-### 使用方式
+### 豆瓣本地运行
 ```
 pip install -r requirements.txt
 python image_wall.py -i={豆瓣 ID}
@@ -23,11 +27,27 @@ python image_wall.py -i={豆瓣 ID}
 
 ### Pinterest 画板壁纸（GitHub Actions）
 
-新增 [Generate Pinterest wallpapers](.github/workflows/generate-pinterest-wallpaper.yml) 工作流，支持将**公开 Pinterest 画板**生成两张不规则拼贴壁纸：
+通过 [Generate Pinterest wallpapers](https://github.com/peterchealse/DoubanImageWall/actions/workflows/generate-pinterest-wallpaper.yml) 工作流，将**公开 Pinterest 画板**生成两张不规则拼贴壁纸，无需在本机安装 Python。
 
-1. 在仓库的 **Actions → Generate Pinterest wallpapers → Run workflow** 中填入完整画板 URL，例如 `https://www.pinterest.com/用户名/画板名/`。
+#### 在线生成
+
+1. 打开仓库的 **Actions → Generate Pinterest wallpapers → Run workflow**，选择 `main` 分支，在 `board_url` 中填入完整画板 URL，例如 `https://www.pinterest.com/用户名/画板名/`，然后确认运行。
 2. 等待运行成功，直接打开仓库的 [`output/pinterest/`](output/pinterest/) 目录查看成品。Action 会把文件提交到运行时选择的分支（通常为 `main`），后续运行更新同名文件；内容完全一致时不创建空提交。
 3. 包含桌面版 `desktop.jpg`（3840×2160）、手机版 `phone.jpg`（1440×3120），以及记录实际图片数量与来源的 `manifest.json`。同时可在该次运行页面的 **Artifacts** 下载 `pinterest-wallpapers-运行编号` 压缩包，附件保留 7 天，仓库文件不受此期限限制。
+
+> 更新工作流后，请通过 **Run workflow** 新建任务。旧任务的 **Re-run jobs** 仍使用旧提交，不会加载新代码。
+
+#### 成品位置
+
+| 文件 | 用途 |
+| --- | --- |
+| [`output/pinterest/desktop.jpg`](output/pinterest/desktop.jpg) | 桌面壁纸，3840×2160 |
+| [`output/pinterest/phone.jpg`](output/pinterest/phone.jpg) | 手机壁纸，1440×3120 |
+| [`output/pinterest/manifest.json`](output/pinterest/manifest.json) | 来源画板、实际图片数量与图片地址 |
+
+仓库文件始终代表该分支最近一次成功提交的成品；切换画板运行会覆盖同名文件。需要保留某次结果时，请下载该次运行的附件。
+
+#### 拼贴样式与限制
 
 固定最多采集 100 张不同图片，每张在每个成品中使用一次，不复制凑数。不规则分区大小与位置随机变化，桌面/手机随机种子分别为 42/7，图片边缘 1 px、相邻间距 2 px。等比例居中裁切可能裁掉画面边缘；GIF 使用首帧。公开画板不足 100 张时，日志和清单会报告实际数量。
 
@@ -35,7 +55,9 @@ python image_wall.py -i={豆瓣 ID}
 
 此功能使用 Pinterest 网页公开数据及分页接口，并非官方稳定 API。若网站限制 GitHub runner 的访问、要求登录或改变数据结构，工作流会明确失败；不会把推荐流当作收藏，也不会静默省略下载失败的图片。网络请求会重试，仍失败时可重新运行。原有豆瓣工作流不受影响。
 
-本地运行：
+#### 本地生成
+
+需要 Python 3.10+：
 
 ```sh
 pip install -r requirements.txt
@@ -46,9 +68,10 @@ python -m unittest discover -s tests -v
 默认成品位于 `output/pinterest/`，下载缓存位于 `cache/pinterest/`。目录保留 Git 忽略规则，Action 仅显式添加三份指定成品，其他本地预览与缓存不会混入提交。成品首次提交后会被 Git 跟踪。`--output` 和 `--cache` 可指定其他目录；本地重跑会覆盖同名成品。云端每次运行独立下载，附件按运行编号区分。
 
 ### 已知问题
-暂无。
 
-### 参数说明
+Pinterest 使用非官方网页接口，存在访问限制及页面结构变更风险，详见上方说明。
+
+### 豆瓣参数说明
 | 参数（短） | 参数（长） | 默认值 | 说明 |
 | - | - | - | - |
 | i | id |  |用户 ID，或含用户 ID 的豆瓣链接 |
