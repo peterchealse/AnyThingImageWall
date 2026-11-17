@@ -35,10 +35,17 @@ jobs:
   generate:
     if: github.event_name == 'workflow_dispatch'
     needs: test
+    permissions:
+      contents: write
+    concurrency:
+      group: pinterest-output-${{ github.ref }}
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.ref }}
       - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
@@ -59,3 +66,16 @@ jobs:
             output/pinterest/manifest.json
           if-no-files-found: error
           retention-days: 7
+      - name: Commit wallpapers to output directory
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f -- output/pinterest/desktop.jpg output/pinterest/phone.jpg output/pinterest/manifest.json
+          if git diff --cached --quiet; then
+            echo "Wallpapers unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "Update Pinterest wallpapers"
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
