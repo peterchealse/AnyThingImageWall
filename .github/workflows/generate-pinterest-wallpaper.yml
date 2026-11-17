@@ -1,0 +1,61 @@
+name: Generate Pinterest wallpapers
+
+on:
+  workflow_dispatch:
+    inputs:
+      board_url:
+        description: 'Public Pinterest board URL (https://www.pinterest.com/username/board/)'
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - 'pinterest_wall.py'
+      - 'tests/test_pinterest_wall.py'
+      - 'requirements.txt'
+      - '.github/workflows/generate-pinterest-wallpaper.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Test Pinterest collection and mosaic layout
+        run: python -m unittest discover -s tests -v
+
+  generate:
+    if: github.event_name == 'workflow_dispatch'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Generate desktop and phone wallpapers
+        env:
+          PINTEREST_BOARD_URL: ${{ inputs.board_url }}
+        run: python pinterest_wall.py "$PINTEREST_BOARD_URL"
+      - name: Upload wallpapers and image manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: pinterest-wallpapers-${{ github.run_id }}
+          path: |
+            output/pinterest/desktop.jpg
+            output/pinterest/phone.jpg
+            output/pinterest/manifest.json
+          if-no-files-found: error
+          retention-days: 7
