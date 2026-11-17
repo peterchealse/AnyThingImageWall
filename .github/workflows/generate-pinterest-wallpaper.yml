@@ -19,11 +19,11 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
           cache: pip
@@ -35,11 +35,11 @@ jobs:
   generate:
     if: github.event_name == 'workflow_dispatch'
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: '3.12'
           cache: pip
@@ -50,7 +50,7 @@ jobs:
           PINTEREST_BOARD_URL: ${{ inputs.board_url }}
         run: python pinterest_wall.py "$PINTEREST_BOARD_URL"
       - name: Upload wallpapers and image manifest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.2
         with:
           name: pinterest-wallpapers-${{ github.run_id }}
           path: |
